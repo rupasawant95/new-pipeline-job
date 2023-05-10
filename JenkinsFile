@@ -1,16 +1,73 @@
-pipeline {
-    agent {
-        docker {
-            image 'abhishekf5/maven-abhishek-docker-agent:v1'
-            args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
-        }
-    }
+pipeline{
+    
+    agent any 
+    
     stages {
-        stage('Checkout') {
-            steps {
-                sh 'echo passed'
-                //git branch: 'main', url: 'https://github.com/rupasawant95/java-maven-sonar-argocd-helm-k8s.git'
+        
+        stage('Git Checkout'){
+            
+            steps{
+                
+                script{
+                    
+                    git branch: 'main', url: 'https://github.com/rupasawant95/new-pipeline-job.git'
+                }
             }
         }
-    }
+        stage('UNIT testing'){
+            
+            steps{
+                
+                script{
+                    
+                    sh 'mvn test'
+                }
+            }
+        }
+        stage('Integration testing'){
+            
+            steps{
+                
+                script{
+                    
+                    sh 'mvn verify -DskipUnitTests'
+                }
+            }
+        }
+        stage('Maven build'){
+            
+            steps{
+                
+                script{
+                    
+                    sh 'mvn clean install'
+                }
+            }
+        }
+        stage('Static code analysis'){
+            
+            steps{
+                
+                script{
+                    
+                    withSonarQubeEnv(credentialsId: 'sonar-api') {
+                        
+                        sh 'mvn clean package sonar:sonar'
+                    }
+                   }
+                    
+                }
+            }
+            stage('Quality Gate Status'){
+                
+                steps{
+                    
+                    script{
+                        
+                        waitForQualityGate abortPipeline: false, credentialsId: 'sonar-api'
+                    }
+                }
+            }
+        }
+        
 }
